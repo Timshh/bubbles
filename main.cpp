@@ -2,6 +2,7 @@
 #include "main.h"
 #include "field.h"
 #include "bubblefactory.h"
+#include "recorder.h"
 #include <ctime>
 #include <fstream>
 
@@ -14,8 +15,9 @@ int main() {
     int screenWidth = 1000;
     int screenHeight = 700;
     SetTargetFPS(60);
-    BubbleFactory Factory;
-    Field field(9, 9, &Factory);
+    BubbleFactory factory;
+    Recorder record;
+    Field field(9, 9, &factory, &record);
     field.BubblesCreate();
     field.BubblesThrow();
 
@@ -27,13 +29,6 @@ int main() {
     raylib::Color color1(0, 68, 130);
     raylib::Color color2(100, 68, 10);
     raylib::Color background = BLACK;
-
-    std::ofstream file("numbers.txt");  // создаст файл, если его нет
-
-    if (!file.is_open()) {
-      std::cout << "Ошибка открытия файла\n";
-      return 1;
-    }
 
     while (!window.ShouldClose())
     {
@@ -48,6 +43,7 @@ int main() {
         pointsimage.Draw(690, -50);
         field.ProcessInput();
         field.Render();
+        record.Render();
         
 
         if (field.IsOver) {
@@ -57,7 +53,7 @@ int main() {
         EndDrawing();
         
     }
-
+    record.UpdateStatistic();
     return 0;
 }
 

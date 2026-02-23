@@ -3,16 +3,29 @@
 #include <iostream>
 #include "raylib-cpp.hpp"
 
+enum BubbleState { 
+	Growing,
+	Idle,
+	Selected,
+	Moving,
+	Destroying,
+	Terminated
+};
+
 class Bubble {
  public:
-  Bubble(raylib::Color bubblecolor);	
-  void Destruct();
+  raylib::Color BubbleColor;
+  int X, Y, NewX = 0, NewY = 0;
+  float Radius = 30.0f, Mult = 1.0f;
+  BubbleState State = Growing;
+  Bubble(raylib::Color bubblecolor);
   ~Bubble();
-  raylib::Color BubbleColor, Outline = raylib::Color(0, 0, 0, 120);
-  int X, Y, NewX, NewY, Delay = 0, MoveTime = 0, Tick = 0, Radius = 30, Mult = 1; 
-  const int BaseRadius = 30;
-  bool IsSelected = false, IsMoving = false, IsDestructed = false;
-  bool Render();
-  void ChangeCoord(int newX, int newY);
+  void Tick();
+  void Destruct();
+  void MoveTo(int newX, int newY);
   void SetSelection(bool state);
+
+ private:
+  const raylib::Color Outline = raylib::Color(0, 0, 0, 120);
+  const int BaseRadius = 30;
 };

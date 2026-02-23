@@ -7,64 +7,76 @@ Bubble::Bubble(raylib::Color bubblecolor) {
   BubbleColor = bubblecolor;
 }
 
-void Bubble::Destruct() { IsDestructed = true; }
+void Bubble::Destruct() {
+  State = Destroying;
+  Mult = -1;
+}
 
-void Bubble::ChangeCoord(int newX, int newY) {
+void Bubble::MoveTo(int newX, int newY) {
   NewX = newX;
   NewY = newY;
-  IsMoving = true;
-  MoveTime = 0;
+  State = Moving;
+  Mult = -1;
 }
 
-void Bubble::SetSelection(bool state) {
-  if (!IsDestructed) {
-    IsSelected = state;
-    if (!IsSelected) {
-      Radius = BaseRadius;
-      Tick = 0;
-      Mult = 1;
+void Bubble::SetSelection(bool newSelected) {
+  if (newSelected) {
+    if (State != Selected) {
+      State = Selected;
+      Mult = -1;
     }
+  }else {
+    State = Idle;
+    Radius = BaseRadius;
+    Mult = -1;
   }
 }
 
-bool Bubble::Render() { DrawCircle(X, Y, Radius, BubbleColor);
-  if (IsDestructed) {
-    Delay++;
-    Radius = BaseRadius - Delay;
-    if (Delay == 30) {
-      return true;
-    }
-  }
-  if (IsMoving) {
-    MoveTime++;
-    Radius = abs(BaseRadius - MoveTime*2);
-    if (MoveTime == 15) {
-      X = NewX;
-      Y = NewY;
-    }
-    if (MoveTime == 30) {
-      IsMoving = false;
-    }
-  }
-  if (IsSelected) {
-    if (Tick == 0) {
-      Radius -= 2 * Mult;
-      if (Radius == BaseRadius - 4) {
-        Mult = -1;
-      } 
+void Bubble::Tick() {
+  Radius += Mult;
+  switch (State) {
+    case Growing:
       if (Radius == BaseRadius) {
+        Mult = 0;
+        State = Idle;
+      }
+      break;
+    case Idle:
+      if (Radius <= BaseRadius) {
         Mult = 1;
-      } 
-    }
-    DrawCircle(X, Y, Radius, BubbleColor);
-    DrawCircleLines(X, Y, Radius, Outline);
-    DrawCircle(X, Y, Radius/2, BLACK);
-    Tick = (Tick + 1) % 30;
-  } else {
-    DrawCircle(X, Y, Radius, BubbleColor);
-    DrawCircleLines(X, Y, Radius, Outline);
+      } else {
+        Mult = 0;
+      }
+      break;
+    case Selected:
+      if (Radius <= BaseRadius - 10) {
+        Mult = 0.2;
+      }
+      if (Radius >= BaseRadius) {
+        Mult = -0.2;
+      }
+      break;
+    case Moving:
+      if (Radius <= 0) {
+        X = NewX;
+        Y = NewY;
+        Mult = 1;
+      }
+      if (Radius >= BaseRadius and Mult == 1) {
+        State = Idle;
+        Mult = 0;
+      }
+      break;
+    case Destroying:
+      if (Radius <= 0) {
+        State = Terminated;
+        Radius = 0;
+        Mult = 0;
+      }
+      break;
   }
-  return false;
+  DrawCircle(X, Y, Radius, BubbleColor);
+  DrawCircleLines(X, Y, Radius, Outline);
 }
 
 Bubble::~Bubble() {}

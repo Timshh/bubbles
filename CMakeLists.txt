@@ -37,7 +37,7 @@ if (NOT raylib_cpp_FOUND)
     FetchContent_MakeAvailable(raylib_cpp)
 endif()
 
-add_executable (game "main.cpp" "main.h" "field.cpp" "field.h" "Bubble.cpp" "bubble.h" "bubblefactory.cpp" "bubblefactory.h")
+add_executable (game "main.cpp" "main.h" "field.cpp" "field.h" "Bubble.cpp" "bubble.h" "bubblefactory.cpp" "bubblefactory.h" "recorder.h" "recorder.cpp")
 target_link_libraries(${PROJECT_NAME} PUBLIC raylib raylib_cpp)
 
 add_custom_command(

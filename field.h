@@ -1,32 +1,40 @@
 ﻿#pragma once
 
 #include <iostream>
-#include <fstream>
 #include "raylib-cpp.hpp"
 #include "bubble.h"
 #include "bubblefactory.h"
+#include "recorder.h"
+
+//enum FieldState { Idle, Moving, Spawning, Destroying, GameOver };
 
 class Field {
 public:
-  Field(int width, int height, BubbleFactory* factory);
-    ~Field();
-        BubbleFactory* Factory;
-    int Width, Height, CellSize, OffsetX, OffsetY, HighlightedCelX,
-        HighlightedCelY, SelectedX = 0, SelectedY = 0, Points = 0,
-                         Record = 0, MoveDelay = 0, DestroyDelay = 0;
+  Field(int width, int height, BubbleFactory* factory, Recorder* recorder);
+  ~Field();
+  Recorder* Record;
+  BubbleFactory* Factory;
+  int Width, Height, CellSize, OffsetX, OffsetY, HighlightedCelX,
+      HighlightedCelY, SelectedX = 0, SelectedY = 0, MoveDelay = 0,
+                       DestroyDelay = 0;
     Vector2 CurrentCoords[3];
     Bubble *Bubble1, *Bubble2, *Bubble3;
-    std::fstream* File;
+    //FieldState State = Idle;
     bool IsPressed = false, CanAct = true, CanThrow = true, IsDelay = false, ThrowAfterDelay = false, IsOver = false, IsMoving = false, IsClicked = false;
+    
     void Render();
+    void TickTimer();
+    
     void PathCleaner();
     bool PathFinder(int startX, int startY, int endX, int endY);
+
     void Click();
     void ProcessInput();
+    
+    void Restart();
     void BubblesCreate();
     void BubblesThrow();
-    void Restart();
-    void TickTimer();
+   
     bool Research(int X, int Y);
     bool Search(int X, int Y, int XChange, int YChange, raylib::Color Target);
     void Destroy(int X, int Y, int XChange, int YChange, int ForawrdLength,

@@ -1,6 +1,6 @@
 ﻿#include "field.h"
 
-Field::Field(int width, int height, BubbleFactory* factory)
+Field::Field(int width, int height, BubbleFactory* factory, Recorder* recorder)
     : Bubbles(height, std::vector<Bubble*>(width)), Paths(height, std::vector<int>(width)) {
   Width = width;
   Height = height;
@@ -8,12 +8,7 @@ Field::Field(int width, int height, BubbleFactory* factory)
   OffsetX = 130;
   OffsetY = 35;
   Factory = factory;
-  std::fstream File("record.txt", std::ios::in);
-  if (File >> Record) {
-  } else {
-    Record = 0;
-  }
-  File.close();
+  Record = recorder;
   for (int x = 0; x < Width; x++) {
     for (int y = 0; y < Height; y++) {
       Bubbles[x][y] = nullptr;
@@ -43,19 +38,18 @@ void Field::Render() {
   for (int x = 0; x < Width; x++) {
     for (int y = 0; y < Height; y++) {
       if (Bubbles[x][y]) {
-        if (Bubbles[x][y]->Render()) {
+        Bubbles[x][y]->Tick();
+        if (Bubbles[x][y]->State == Terminated) {
           delete Bubbles[x][y];
           Bubbles[x][y] = nullptr;
         }
       }
     }
   }
-  DrawText(std::to_string(Points), OffsetX + 690, OffsetY + 45, 30, TextColor);
-  DrawText(std::to_string(Record), OffsetX + 690, OffsetY + 490, 30, TextColor);
   if (Bubble1) {
-    Bubble1->Render();
-    Bubble2->Render();
-    Bubble3->Render();
+    Bubble1->Tick();
+    Bubble2->Tick();
+    Bubble3->Tick();
   }
   if (IsPressed != IsMouseButtonDown(0) and IsPressed == false) {
     Click();
@@ -120,11 +114,12 @@ void Field::Click() {
                          HighlightedCelY)) {
             Bubbles[HighlightedCelX][HighlightedCelY] =
                 Bubbles[SelectedX][SelectedY];
-            Bubbles[HighlightedCelX][HighlightedCelY]->ChangeCoord(
+            Bubbles[HighlightedCelX][HighlightedCelY]->SetSelection(false);
+            Bubbles[HighlightedCelX][HighlightedCelY]->MoveTo(
                 OffsetX + HighlightedCelX * CellSize + CellSize / 2,
                 OffsetY + HighlightedCelY * CellSize + CellSize / 2);
             Bubbles[SelectedX][SelectedY] = nullptr;
-            Bubbles[HighlightedCelX][HighlightedCelY]->SetSelection(false);
+            
             CurrentCoords[0] = Vector2(HighlightedCelX, HighlightedCelY); 
             IsMoving = true;
             IsClicked = true;
@@ -145,12 +140,12 @@ void Field::ProcessInput() {
 
 void Field::BubblesCreate() { 
     Bubble1 = Factory->CreateBubble();
-  Bubble1->ChangeCoord(OffsetX + 700 + CellSize / 2, OffsetY + 200 + CellSize / 2);
+  Bubble1->MoveTo(OffsetX + 700 + CellSize / 2, OffsetY + 200 + CellSize / 2);
     Bubble2 = Factory->CreateBubble();
-  Bubble2->ChangeCoord(OffsetX + 700 + CellSize / 2,
+  Bubble2->MoveTo(OffsetX + 700 + CellSize / 2,
                        OffsetY + 200 + CellSize + CellSize / 2);
     Bubble3 = Factory->CreateBubble();
-  Bubble3->ChangeCoord(OffsetX + 700 + CellSize / 2,
+  Bubble3->MoveTo(OffsetX + 700 + CellSize / 2,
                     OffsetY + 200 + CellSize*2 + CellSize / 2);
 }
 
@@ -175,7 +170,7 @@ void Field::BubblesThrow() {
     int y = x / Height;
     x = x % Height;
     Bubbles[x][y] = Bubble1;
-    Bubble1->ChangeCoord(OffsetX + x * CellSize + CellSize / 2,
+    Bubble1->MoveTo(OffsetX + x * CellSize + CellSize / 2,
                       OffsetY + y * CellSize + CellSize / 2);
     FreeIDs.clear();
     for (int x = 0; x < Width; x++) {
@@ -192,7 +187,7 @@ void Field::BubblesThrow() {
     y = y = x / Height;
     x = x % Height;
     Bubbles[x][y] = Bubble2;
-    Bubble2->ChangeCoord(OffsetX + x * CellSize + CellSize / 2,
+    Bubble2->MoveTo(OffsetX + x * CellSize + CellSize / 2,
                       OffsetY + y * CellSize + CellSize / 2);
     FreeIDs.clear();
     for (int x = 0; x < Width; x++) {
@@ -209,7 +204,7 @@ void Field::BubblesThrow() {
     y = y = x / Height;
     x = x % Height;
     Bubbles[x][y] = Bubble3;
-    Bubble3->ChangeCoord(OffsetX + x * CellSize + CellSize / 2,
+    Bubble3->MoveTo(OffsetX + x * CellSize + CellSize / 2,
                       OffsetY + y * CellSize + CellSize / 2);
     FreeIDs.clear();
     for (int x = 0; x < Width; x++) {
@@ -237,7 +232,7 @@ void Field::Restart() {
       Bubbles[x][y] = nullptr;
     }
   }
-  Points = 0;
+  Record->Nullify();
   CanAct = true;
   IsOver = false;
   BubblesThrow();
@@ -320,7 +315,7 @@ void Field::Destroy(int X, int Y, int XChange, int YChange, int ForawrdLength,
   for (int i = 0; i < ForawrdLength; i++) {
     if (Bubbles[localX][localY]) {
       Bubbles[localX][localY]->Destruct();
-      Points += 100;
+      Record->AddPoints(100);
     }
     localX += XChange;
     localY += YChange;
@@ -331,16 +326,9 @@ void Field::Destroy(int X, int Y, int XChange, int YChange, int ForawrdLength,
     localY -= YChange;
     if (Bubbles[localX][localY]) {
       Bubbles[localX][localY]->Destruct();
-      Points += 100;
+      Record->AddPoints(100);
     }
   }
-  if (Record < Points) {
-    Record = Points;
-    std::ofstream File("record.txt", std::ios::trunc);
-    File << Record;
-    File.close();
-  }
-  
 }
 
 bool Field::Search(int X, int Y, int XChange, int YChange, raylib::Color Target) { 
