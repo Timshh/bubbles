@@ -1,59 +1,36 @@
-﻿#include "raylib-cpp.hpp"
-#include "main.h"
-#include "field.h"
+﻿#include <ctime>
+
 #include "bubblefactory.h"
+#include "field.h"
+#include "gamemode.h"
+#include "raylib-cpp.hpp"
 #include "recorder.h"
-#include <ctime>
-#include <fstream>
 
 using namespace std;
 
-
-
 int main() {
-    srand(time(NULL));
-    int screenWidth = 1000;
-    int screenHeight = 700;
-    SetTargetFPS(60);
-    BubbleFactory factory;
-    Recorder record;
-    Field field(9, 9, &factory, &record);
-    field.BubblesCreate();
-    field.BubblesThrow();
+  srand(time(NULL));
+  int screenWidth = 1000;
+  int screenHeight = 700;
+  raylib::Window window(screenWidth, screenHeight, "Bubbles");
+  raylib::Texture bgimage("res/bgimage.png");
+  raylib::Texture gameover("res/gameover.png");
+  raylib::Texture recordimage("res/record.png");
+  raylib::Texture pointsimage("res/points.png");
+  SetTargetFPS(60);
+  Gamemode gamemode(9, 9, &bgimage, &gameover, &recordimage, &pointsimage);
 
-    raylib::Window window(screenWidth, screenHeight, "Bubbles");
-    raylib::Texture bgimage("res/bgimage.png");
-    raylib::Texture gameover("res/gameover.png");
-    raylib::Texture recordimage("res/record.png");
-    raylib::Texture pointsimage("res/points.png");
-    raylib::Color color1(0, 68, 130);
-    raylib::Color color2(100, 68, 10);
-    raylib::Color background = BLACK;
+  raylib::Color background = BLACK;
 
-    while (!window.ShouldClose())
-    {
+  while (!window.ShouldClose()) {
+    BeginDrawing();
+    window.ClearBackground(background);
 
-        BeginDrawing();
-        window.ClearBackground(background);
+    gamemode.Render();
 
-        bgimage.Draw(screenWidth - bgimage.GetWidth(),
-                     screenHeight - bgimage.GetHeight());
-
-        recordimage.Draw(690, 400);
-        pointsimage.Draw(690, -50);
-        field.ProcessInput();
-        field.Render();
-        record.Render();
-        
-
-        if (field.IsOver) {
-          gameover.Draw(-270,-100);
-        }
-
-        EndDrawing();
-        
-    }
-    record.UpdateStatistic();
-    return 0;
+    EndDrawing();
+  }
+  gamemode.Record->UpdateStatistic();
+  CloseAudioDevice();
+  return 0;
 }
-

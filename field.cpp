@@ -1,7 +1,8 @@
 ﻿#include "field.h"
 
 Field::Field(int width, int height, BubbleFactory* factory, Recorder* recorder)
-    : Bubbles(height, std::vector<Bubble*>(width)), Paths(height, std::vector<int>(width)) {
+    : Bubbles(height, std::vector<Bubble*>(width)),
+      Paths(height, std::vector<int>(width)) {
   Width = width;
   Height = height;
   CellSize = 70;
@@ -14,32 +15,43 @@ Field::Field(int width, int height, BubbleFactory* factory, Recorder* recorder)
       Bubbles[x][y] = nullptr;
     }
   }
+  if (rand() % 2 == 0) {
+    Track = LoadMusicStream("res/EyeOfTheStorm.mp3");
+  } else {
+    Track = LoadMusicStream("res/TownTheme.mp3");
+  }
+  PlayMusicStream(Track);
+  SetMusicVolume(Track, 0.1f);
 }
 
 Field::~Field() {}
 
 void Field::Render() {
   TickTimer();
-  DrawRectangle(OffsetX, OffsetY, CellSize * Width, CellSize * Height, raylib::Color(0,0,0,50));
+  Track.Update();
+  DrawRectangle(OffsetX, OffsetY, CellSize * Width, CellSize * Height,
+                raylib::Color(0, 0, 0, 50));
   for (int x = 0; x < Width; x++) {
     for (int y = 0; y < Height; y++) {
       DrawRectangleLines(OffsetX + x * CellSize, OffsetY + y * CellSize,
                          CellSize, CellSize, CellColor);
     }
   }
-  if (HighlightedCelX >= 0 and HighlightedCelX < Width and HighlightedCelY >=0 and HighlightedCelY < Height) {
+  if (HighlightedCelX >= 0 and HighlightedCelX < Width and
+      HighlightedCelY >= 0 and HighlightedCelY < Height) {
     DrawRectangle(OffsetX + HighlightedCelX * CellSize,
-                  OffsetY + HighlightedCelY * CellSize, CellSize - 1, CellSize - 1,
-                  HighlightedColor);
+                  OffsetY + HighlightedCelY * CellSize, CellSize - 1,
+                  CellSize - 1, HighlightedColor);
   }
   for (int i = 0; i < 3; i++) {
-    DrawRectangleLines(OffsetX + 700, OffsetY + 200 + i*CellSize, CellSize, CellSize, CellColor);
+    DrawRectangleLines(OffsetX + 700, OffsetY + 200 + i * CellSize, CellSize,
+                       CellSize, CellColor);
   }
   for (int x = 0; x < Width; x++) {
     for (int y = 0; y < Height; y++) {
       if (Bubbles[x][y]) {
         Bubbles[x][y]->Tick();
-        if (Bubbles[x][y]->State == Terminated) {
+        if (Bubbles[x][y]->State == BubbleState::Terminated) {
           delete Bubbles[x][y];
           Bubbles[x][y] = nullptr;
         }
@@ -55,7 +67,6 @@ void Field::Render() {
     Click();
   }
   IsPressed = IsMouseButtonDown(0);
-  
 }
 
 void Field::PathCleaner() {
@@ -70,11 +81,11 @@ void Field::PathCleaner() {
   }
 }
 
-bool Field::PathFinder(int startX, int startY, int endX, int endY) { 
+bool Field::PathFinder(int startX, int startY, int endX, int endY) {
   Paths[startX][startY] = 1;
   bool result = false;
   if (startX == endX and startY == endY) {
-      return true;
+    return true;
   } else {
     if (startX - 1 >= 0 and Paths[startX - 1][startY] == 0) {
       result = result or PathFinder(startX - 1, startY, endX, endY);
@@ -93,11 +104,11 @@ bool Field::PathFinder(int startX, int startY, int endX, int endY) {
 }
 
 void Field::Click() {
-  if (IsOver) {
+  if (State == FieldState::GameOver) {
     Restart();
     return;
   }
-  if (CanAct) {
+  if (State == FieldState::Idle) {
     if (HighlightedCelX >= 0 and HighlightedCelX < Width and
         HighlightedCelY >= 0 and HighlightedCelY < Height) {
       if (Bubbles[HighlightedCelX][HighlightedCelY]) {
@@ -119,51 +130,55 @@ void Field::Click() {
                 OffsetX + HighlightedCelX * CellSize + CellSize / 2,
                 OffsetY + HighlightedCelY * CellSize + CellSize / 2);
             Bubbles[SelectedX][SelectedY] = nullptr;
-            
-            CurrentCoords[0] = Vector2(HighlightedCelX, HighlightedCelY); 
-            IsMoving = true;
-            IsClicked = true;
-            CanAct = false;
+
+            CurrentCoords[0] = Vector2(HighlightedCelX, HighlightedCelY);
+            State = FieldState::Moving;
           }
         }
       }
+      Sound sfxClick = LoadSound("res/Click.wav");
+      PlaySound(sfxClick);
     }
   }
 }
 
 void Field::ProcessInput() {
-  int MouseX = GetMouseX() - OffsetX + CellSize;
-  int MouseY = GetMouseY() - OffsetY + CellSize;
-  HighlightedCelX = MouseX / CellSize - 1;
-  HighlightedCelY = MouseY / CellSize - 1;
+  if (State == FieldState::Idle) {
+    int MouseX = GetMouseX() - OffsetX + CellSize;
+    int MouseY = GetMouseY() - OffsetY + CellSize;
+    HighlightedCelX = MouseX / CellSize - 1;
+    HighlightedCelY = MouseY / CellSize - 1;
+  } else {
+    HighlightedCelX = -1;
+    HighlightedCelY = -1;
+  }
 }
 
-void Field::BubblesCreate() { 
-    Bubble1 = Factory->CreateBubble();
+void Field::BubblesCreate() {
+  Bubble1 = Factory->CreateBubble();
   Bubble1->MoveTo(OffsetX + 700 + CellSize / 2, OffsetY + 200 + CellSize / 2);
-    Bubble2 = Factory->CreateBubble();
+  Bubble2 = Factory->CreateBubble();
   Bubble2->MoveTo(OffsetX + 700 + CellSize / 2,
-                       OffsetY + 200 + CellSize + CellSize / 2);
-    Bubble3 = Factory->CreateBubble();
+                  OffsetY + 200 + CellSize + CellSize / 2);
+  Bubble3 = Factory->CreateBubble();
   Bubble3->MoveTo(OffsetX + 700 + CellSize / 2,
-                    OffsetY + 200 + CellSize*2 + CellSize / 2);
+                  OffsetY + 200 + CellSize * 2 + CellSize / 2);
 }
 
 void Field::BubblesThrow() {
-  if (!CanThrow) {
+  if (State == FieldState::GameOver) {
     return;
   }
   std::vector<int> FreeIDs;
   for (int x = 0; x < Width; x++) {
     for (int y = 0; y < Height; y++) {
       if (!Bubbles[x][y]) {
-        FreeIDs.push_back(x+y*Height);
+        FreeIDs.push_back(x + y * Height);
       }
     }
   }
   CanAct = false;
   if (FreeIDs.size() >= 3) {
-
     CanThrow = false;
     int ID = rand() % FreeIDs.size();
     int x = FreeIDs[ID];
@@ -171,7 +186,7 @@ void Field::BubblesThrow() {
     x = x % Height;
     Bubbles[x][y] = Bubble1;
     Bubble1->MoveTo(OffsetX + x * CellSize + CellSize / 2,
-                      OffsetY + y * CellSize + CellSize / 2);
+                    OffsetY + y * CellSize + CellSize / 2);
     FreeIDs.clear();
     for (int x = 0; x < Width; x++) {
       for (int y = 0; y < Height; y++) {
@@ -181,14 +196,14 @@ void Field::BubblesThrow() {
       }
     }
     CurrentCoords[0] = Vector2(x, y);
-    
+
     ID = rand() % FreeIDs.size();
     x = FreeIDs[ID];
     y = y = x / Height;
     x = x % Height;
     Bubbles[x][y] = Bubble2;
     Bubble2->MoveTo(OffsetX + x * CellSize + CellSize / 2,
-                      OffsetY + y * CellSize + CellSize / 2);
+                    OffsetY + y * CellSize + CellSize / 2);
     FreeIDs.clear();
     for (int x = 0; x < Width; x++) {
       for (int y = 0; y < Height; y++) {
@@ -198,14 +213,14 @@ void Field::BubblesThrow() {
       }
     }
     CurrentCoords[1] = Vector2(x, y);
-    
+
     ID = rand() % FreeIDs.size();
     x = FreeIDs[ID];
     y = y = x / Height;
     x = x % Height;
     Bubbles[x][y] = Bubble3;
     Bubble3->MoveTo(OffsetX + x * CellSize + CellSize / 2,
-                      OffsetY + y * CellSize + CellSize / 2);
+                    OffsetY + y * CellSize + CellSize / 2);
     FreeIDs.clear();
     for (int x = 0; x < Width; x++) {
       for (int y = 0; y < Height; y++) {
@@ -215,11 +230,13 @@ void Field::BubblesThrow() {
       }
     }
     CurrentCoords[2] = Vector2(x, y);
-    IsMoving = true;
+    State = FieldState::Moving;
 
     BubblesCreate();
   } else {
-    IsOver = true;
+    State = FieldState::GameOver;
+    Sound sfxOver = LoadSound("res/Defeat.wav");
+    PlaySound(sfxOver);
   }
 }
 
@@ -234,11 +251,17 @@ void Field::Restart() {
   }
   Record->Nullify();
   CanAct = true;
-  IsOver = false;
+  State = FieldState::Idle;
   BubblesThrow();
+  if (rand() % 2 == 0) {
+    Track = LoadMusicStream("res/EyeOfTheStorm.mp3");
+  } else {
+    Track = LoadMusicStream("res/TownTheme.mp3");
+  }
+  PlayMusicStream(Track);
 }
 
-void Field::TickTimer() { 
+void Field::TickTimer() {
   if (IsDelay) {
     DestroyDelay++;
     if (DestroyDelay == 30) {
@@ -251,11 +274,11 @@ void Field::TickTimer() {
       }
     }
   }
-  if (IsMoving) {
+  if (State == FieldState::Moving) {
     MoveDelay++;
     if (MoveDelay == 30) {
       MoveDelay = 0;
-      IsMoving = false;
+      State = FieldState::Idle;
       CanAct = true;
       if (IsClicked) {
         if (!Research(CurrentCoords[0].x, CurrentCoords[0].y)) {
@@ -277,7 +300,9 @@ void Field::TickTimer() {
           }
         }
         if (FreeIDs.size() == 0) {
-          IsOver = true;
+          State == FieldState::GameOver;
+          Sound sfxOver = LoadSound("res/Defeat.wav");
+          PlaySound(sfxOver);
         } else {
           CanThrow = true;
         }
@@ -286,27 +311,29 @@ void Field::TickTimer() {
   }
 }
 
-bool Field::Research(int X, int Y) { 
-    raylib::Color Target = Bubbles[X][Y]->BubbleColor;
-    bool flag = false,
-            Worked = Search(X, Y, 1, 0, Target) or Search(X, Y, 0, 1, Target) or
-                     Search(X, Y, 1, 1, Target) or Search(X, Y, 1, -1, Target);
-    if (Worked) {
-      CanAct = false;
-      IsDelay = true;
-      for (int x = 0; x < Width; x++) {
-        for (int y = 0; y < Height; y++) {
-          if (Bubbles[x][y]) {
-            flag = true;
-            break;
-          }
+bool Field::Research(int X, int Y) {
+  raylib::Color Target = Bubbles[X][Y]->BubbleColor;
+  bool flag = false,
+       Worked = Search(X, Y, 1, 0, Target) or Search(X, Y, 0, 1, Target) or
+                Search(X, Y, 1, 1, Target) or Search(X, Y, 1, -1, Target);
+  if (Worked) {
+    CanAct = false;
+    IsDelay = true;
+    for (int x = 0; x < Width; x++) {
+      for (int y = 0; y < Height; y++) {
+        if (Bubbles[x][y]) {
+          flag = true;
+          break;
         }
       }
-      if (!flag) {
-        ThrowAfterDelay = true;
-      }
     }
-    return Worked;
+    if (!flag) {
+      ThrowAfterDelay = true;
+    }
+    Sound sfxBoom = LoadSound("res/Destroy.wav");
+    PlaySound(sfxBoom);
+  }
+  return Worked;
 }
 
 void Field::Destroy(int X, int Y, int XChange, int YChange, int ForawrdLength,
@@ -331,7 +358,8 @@ void Field::Destroy(int X, int Y, int XChange, int YChange, int ForawrdLength,
   }
 }
 
-bool Field::Search(int X, int Y, int XChange, int YChange, raylib::Color Target) { 
+bool Field::Search(int X, int Y, int XChange, int YChange,
+                   raylib::Color Target) {
   int ForwardCount = 1, BackwardCount = 0, localX = X, localY = Y;
   bool flag = true;
   while (flag) {
@@ -344,7 +372,6 @@ bool Field::Search(int X, int Y, int XChange, int YChange, raylib::Color Target)
     } else {
       flag = false;
     }
-    
   }
   localX = X, localY = Y;
   flag = true;

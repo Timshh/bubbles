@@ -1,6 +1,7 @@
-#pragma once
+﻿#pragma once
 
 #include <iostream>
+
 #include "bubble.h"
 #include "raylib-cpp.hpp"
 

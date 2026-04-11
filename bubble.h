@@ -1,15 +1,16 @@
 ﻿#pragma once
 
 #include <iostream>
+
 #include "raylib-cpp.hpp"
 
-enum BubbleState { 
-	Growing,
-	Idle,
-	Selected,
-	Moving,
-	Destroying,
-	Terminated
+enum class BubbleState {
+  Growing,
+  Idle,
+  Selected,
+  Moving,
+  Destroying,
+  Terminated
 };
 
 class Bubble {
@@ -17,7 +18,7 @@ class Bubble {
   raylib::Color BubbleColor;
   int X, Y, NewX = 0, NewY = 0;
   float Radius = 30.0f, Mult = 1.0f;
-  BubbleState State = Growing;
+  BubbleState State = BubbleState::Growing;
   Bubble(raylib::Color bubblecolor);
   ~Bubble();
   void Tick();

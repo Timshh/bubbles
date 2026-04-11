@@ -1,5 +1,6 @@
-﻿#include "raylib-cpp.hpp"
-#include "bubble.h"
+﻿#include "bubble.h"
+
+#include "raylib-cpp.hpp"
 
 Bubble::Bubble(raylib::Color bubblecolor) {
   X = -100;
@@ -8,47 +9,45 @@ Bubble::Bubble(raylib::Color bubblecolor) {
 }
 
 void Bubble::Destruct() {
-  State = Destroying;
+  State = BubbleState::Destroying;
   Mult = -1;
 }
 
 void Bubble::MoveTo(int newX, int newY) {
   NewX = newX;
   NewY = newY;
-  State = Moving;
+  State = BubbleState::Moving;
   Mult = -1;
 }
 
 void Bubble::SetSelection(bool newSelected) {
   if (newSelected) {
-    if (State != Selected) {
-      State = Selected;
-      Mult = -1;
+    if (State != BubbleState::Selected) {
+      State = BubbleState::Selected;
     }
-  }else {
-    State = Idle;
-    Radius = BaseRadius;
-    Mult = -1;
+  } else {
+    State = BubbleState::Idle;
   }
 }
 
 void Bubble::Tick() {
   Radius += Mult;
   switch (State) {
-    case Growing:
-      if (Radius == BaseRadius) {
+    case BubbleState::Growing:
+      if (Radius >= BaseRadius) {
         Mult = 0;
-        State = Idle;
+        Radius = BaseRadius;
+        State = BubbleState::Idle;
       }
       break;
-    case Idle:
+    case BubbleState::Idle:
       if (Radius <= BaseRadius) {
-        Mult = 1;
+        Mult = 0.4;
       } else {
         Mult = 0;
       }
       break;
-    case Selected:
+    case BubbleState::Selected:
       if (Radius <= BaseRadius - 10) {
         Mult = 0.2;
       }
@@ -56,20 +55,20 @@ void Bubble::Tick() {
         Mult = -0.2;
       }
       break;
-    case Moving:
+    case BubbleState::Moving:
       if (Radius <= 0) {
         X = NewX;
         Y = NewY;
         Mult = 1;
       }
       if (Radius >= BaseRadius and Mult == 1) {
-        State = Idle;
+        State = BubbleState::Idle;
         Mult = 0;
       }
       break;
-    case Destroying:
+    case BubbleState::Destroying:
       if (Radius <= 0) {
-        State = Terminated;
+        State = BubbleState::Terminated;
         Radius = 0;
         Mult = 0;
       }
